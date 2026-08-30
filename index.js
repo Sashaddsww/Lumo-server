@@ -3,20 +3,29 @@ const admin = require('firebase-admin');
 const app = express();
 app.use(express.json());
 
-// 1. Авторизация в Firebase через переменную окружения (настроим на Render)
 const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
 });
 
-// 2. Эндпоинт для отправки пуша (Сюда будет стучаться наш Андроид)
 app.post('/send-push', async (req, res) => {
   const { token, title, body } = req.body;
   if (!token || !title || !body) return res.status(400).send('Missing fields');
 
+  // ОБНОВЛЕННЫЙ, "АГРЕССИВНЫЙ" ПУШ ДЛЯ XIAOMI/POCO
   const message = {
-    notification: { title, body },
-    token: token
+    notification: { 
+      title: title, 
+      body: body 
+    },
+    token: token,
+    android: {
+      priority: 'high', // Заставляем телефон проснуться
+      notification: {
+        channelId: 'Lumo_Chat_Channel', // Тот самый канал из нашего Android-кода
+        sound: 'default'
+      }
+    }
   };
 
   try {
@@ -28,10 +37,6 @@ app.post('/send-push', async (req, res) => {
   }
 });
 
-// 3. Эндпоинт-пинг для UptimeRobot (чтобы сервер не засыпал)
-app.get('/ping', (req, res) => {
-  res.send('Pong! Lumo Server is alive.');
-});
-
+app.get('/ping', (req, res) => res.send('Pong!'));
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
